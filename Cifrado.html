@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enigma – Recorrido visual de una pulsación</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --ink: #e9eefc;
+      --muted: #9fb0d9;
+      --accent: #71d0ff;
+      --hot: #ffd166;
+      --col-gap: 18px;
+      --row-gap: 4px;
+      --round: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif
+    }
+
+    h1 {
+      font-size: clamp(20px, 3.2vw, 26px);
+      margin: 10px 0 6px
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 14px
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+      gap: var(--col-gap);
+      align-items: start
+    }
+
+    .col {
+      background: #121836;
+      border: 1px solid #1b2450;
+      border-radius: var(--round);
+      padding: 10px
+    }
+
+    .col h3 {
+      margin: 4px 0 8px;
+      font-size: 14px;
+      color: var(--muted);
+      letter-spacing: .12em;
+      text-transform: uppercase
+    }
+
+    .letters {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--row-gap)
+    }
+
+    .letters button,
+    .letters div {
+      background: #10162e;
+      color: var(--ink);
+      border: 1px solid #2b3b7a;
+      border-radius: 10px;
+      padding: 4px 6px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      letter-spacing: .06em
+    }
+
+    .letters div {
+      cursor: default
+    }
+
+    .letters .hit {
+      background: var(--hot);
+      color: #2b2b2b;
+      border-color: #ffb703;
+      box-shadow: 0 0 0 2px #ffb70355 inset
+    }
+
+    .letters .path {
+      background: #1a2347;
+      color: var(--accent);
+      border-color: #3b5bd1;
+      box-shadow: 0 0 0 2px #3b5bd177 inset
+    }
+
+    .panel {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 10px 0
+    }
+
+    .panel input[type=text] {
+      background: #0f1530;
+      border: 1px solid #334485;
+      border-radius: 10px;
+      color: var(--ink);
+      padding: 8px 10px;
+      min-width: 240px
+    }
+
+    .rotorBox {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 4px
+    }
+
+    .badge {
+      display: inline-block;
+      background: #17204a;
+      color: var(--muted);
+      border: 1px solid #2a3c8b;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 12px
+    }
+
+    .pos {
+      font-weight: 700;
+      color: var(--hot)
+    }
+
+    .lamp {
+      background: #0e142f;
+      border: 1px solid #2b3b7a;
+      border-radius: 12px;
+      padding: 10px 8px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px
+    }
+
+    .lamp .on {
+      background: #ffe08a;
+      color: #1c1c1c;
+      border-color: #ffca3a;
+      font-weight: 800
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 6px
+    }
+
+    .kbd {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px
+    }
+
+    .kbd button {
+      padding: 8px 0
+    }
+
+    .small {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .footer {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>Enigma – recorrido visual de una pulsación</h1>
+    <div class="panel">
+      <label>Texto: <input id="plain" type="text" value="ENIGMA" /></label>
+      <button id="typeBtn">Cifrar paso a paso</button>
+      <span class="badge">Rotores: <b id="rLeft">I</b>·<b id="rMid">II</b>·<b id="rRight">III</b></span>
+      <span class="badge">Posiciones: <span class="pos" id="pLeft">A</span> <span class="pos" id="pMid">A</span> <span
+          class="pos" id="pRight">A</span></span>
+      <span class="badge">Reflector: B</span>
+    </div>
+
+    <div class="board">
+      <div class="col">
+        <h3>Teclado</h3>
+        <div id="keyboard" class="kbd"></div>
+        <div class="note small">Haz clic en una letra o usa “Cifrar paso a paso”.</div>
+      </div>
+
+      <div class="col rotorBox">
+        <h3>Rotor derecho (III)</h3>
+        <div id="rotorR" class="letters"></div>
+      </div>
+
+      <div class="col rotorBox">
+        <h3>Rotor medio (II)</h3>
+        <div id="rotorM" class="letters"></div>
+      </div>
+
+      <div class="col rotorBox">
+        <h3>Rotor izquierdo (I)</h3>
+        <div id="rotorL" class="letters"></div>
+      </div>
+
+      <div class="col">
+        <h3>Reflector B</h3>
+        <div id="refl" class="letters"></div>
+      </div>
+
+      <div class="col">
+        <h3>Lámparas</h3>
+        <div id="lamp" class="lamp"></div>
+      </div>
+    </div>
+
+    <div class="footer">Simplificado pero fiel: incluye plugboard vacío, rotores I·II·III con muescas Q/E/V y reflector
+      B. Visualiza el <em>recorrido</em> resaltando cada paso (tecla → R → M → L → reflector → L → M → R → lámpara) y el
+      avance de los rotores.</div>
+  </div>
+
+  <script>
+    // === Datos de Enigma (Enigma I) ===
+    const A2Z = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]; // 0..25
+    const ROTORS = {
+      I: { map: "EKMFLGDQVZNTOWYHXUSPAIBRCJ", notch: "Q" },
+      II: { map: "AJDKSIRUXBLHWTMCQGZNPYFVOE", notch: "E" },
+      III: { map: "BDFHJLCPRTXVZNYEIWGAKMUSQO", notch: "V" }
+    };
+    const REFLECTOR_B = "YRUHQSLDPXNGOKMIEBFZCWVJAT";
+    // Plugboard sin conexiones (identidad). Puedes probar pares: {A:"B",B:"A", ...}
+    const PLUG = {};
+
+    // Estado de rotores (I,II,III en izquierda,medio,derecha)
+    let left = { id: "I", pos: 0 }, mid = { id: "II", pos: 0 }, right = { id: "III", pos: 0 };
+
+    // === Utilidades ===
+    const idx = ch => ch.charCodeAt(0) - 65;
+    const ch = i => A2Z[(i + 26) % 26];
+
+    function plug(i) { const c = ch(i); return PLUG[c] ? idx(PLUG[c]) : i; }
+
+    function rotorForward(i, rotor, pos) {
+      // entrada i -> salida (aplicando desplazamiento/posicion)
+      const wiring = ROTORS[rotor].map;
+      const stepped = (i + pos) % 26;
+      const outCh = wiring[stepped];
+      return (idx(outCh) - pos + 26) % 26;
+    }
+    function rotorBackward(i, rotor, pos) {
+      const wiring = ROTORS[rotor].map;
+      const stepped = (i + pos) % 26;
+      const out = wiring.indexOf(ch(stepped));
+      return (out - pos + 26) % 26;
+    }
+
+    function stepRotors() {
+      // Doble paso auténtico
+      const notchR = idx(ROTORS[right.id].notch);
+      const notchM = idx(ROTORS[mid.id].notch);
+      const atR = right.pos === notchR;       // si R está en su muesca, M avanzará
+      const atM = mid.pos === notchM;         // si M está en su muesca, L avanzará y M avanza por doble paso
+      // el rotor derecho siempre avanza
+      right.pos = (right.pos + 1) % 26;
+      if (atR || atM) mid.pos = (mid.pos + 1) % 26;
+      if (atM) left.pos = (left.pos + 1) % 26;
+      renderPositions();
+    }
+
+    function reflect(i) { return idx(REFLECTOR_B[i]); }
+
+    // === Visualización ===
+    const el = {
+      keyboard: document.getElementById('keyboard'),
+      rR: document.getElementById('rotorR'),
+      rM: document.getElementById('rotorM'),
+      rL: document.getElementById('rotorL'),
+      refl: document.getElementById('refl'),
+      lamp: document.getElementById('lamp'),
+      pL: document.getElementById('pLeft'),
+      pM: document.getElementById('pMid'),
+      pR: document.getElementById('pRight'),
+    };
+
+    function fillLetters(container, isButtons = false) {
+      container.innerHTML = '';
+      A2Z.forEach(c => {
+        const node = isButtons ? document.createElement('button') : document.createElement('div');
+        node.textContent = c; container.appendChild(node);
+      });
+    }
+    function renderAll() {
+      fillLetters(el.rR); fillLetters(el.rM); fillLetters(el.rL); fillLetters(el.refl); fillLetters(el.lamp);
+      fillLetters(el.keyboard, true);
+      renderPositions();
+      el.keyboard.querySelectorAll('button').forEach(b => b.onclick = () => typeChar(b.textContent));
+    }
+    function renderPositions() {
+      el.pL.textContent = ch(left.pos); el.pM.textContent = ch(mid.pos); el.pR.textContent = ch(right.pos);
+    }
+
+    function clearClasses() {
+      document.querySelectorAll('.path,.hit,.on').forEach(n => n.classList.remove('path', 'hit', 'on'));
+    }
+
+    function mark(container, letter, cls) {
+      const i = idx(letter); const n = container.children[i]; if (n) n.classList.add(cls);
+    }
+
+    async function animatePath(steps) {
+      clearClasses();
+      const delay = ms => new Promise(r => setTimeout(r, ms));
+      const { key, r1, r2, r3, ref, r3b, r2b, r1b, lamp } = steps;
+      mark(el.keyboard, key, 'hit'); await delay(220);
+      mark(el.rR, ch(r1), 'path'); await delay(160);
+      mark(el.rM, ch(r2), 'path'); await delay(160);
+      mark(el.rL, ch(r3), 'path'); await delay(160);
+      mark(el.refl, ch(ref), 'path'); await delay(160);
+      mark(el.rL, ch(r3b), 'path'); await delay(160);
+      mark(el.rM, ch(r2b), 'path'); await delay(160);
+      mark(el.rR, ch(r1b), 'path'); await delay(160);
+      // lámpara
+      mark(el.lamp, lamp, 'on');
+    }
+
+    function computePath(letter) {
+      // 1) paso por plugboard
+      let i = idx(letter);
+      i = plug(i);
+      // para visualizar, guardamos la letra efectiva en cada entrada a columna
+      const beforeR = i;
+      // 2) R forward
+      let o1 = rotorForward(i, right.id, right.pos);
+      const beforeM = o1;
+      // 3) M forward
+      let o2 = rotorForward(o1, mid.id, mid.pos);
+      const beforeL = o2;
+      // 4) L forward
+      let o3 = rotorForward(o2, left.id, left.pos);
+      // 5) reflector
+      let r = reflect(o3);
+      // 6) regreso por L
+      let b3 = rotorBackward(r, left.id, left.pos);
+      // 7) regreso por M
+      let b2 = rotorBackward(b3, mid.id, mid.pos);
+      // 8) regreso por R
+      let b1 = rotorBackward(b2, right.id, right.pos);
+      // 9) plugboard salida
+      let out = plug(b1);
+      return {
+        key: letter,
+        r1: beforeR,
+        r2: beforeM,
+        r3: beforeL,
+        ref: r,
+        r3b: b3,
+        r2b: b2,
+        r1b: b1,
+        lamp: ch(out)
+      };
+    }
+
+    async function typeChar(letter) {
+      if (!/[A-Z]/.test(letter)) return;
+      stepRotors();
+      const steps = computePath(letter);
+      await animatePath(steps);
+      return steps.lamp;
+    }
+
+    async function typeText() {
+      const txt = document.getElementById('plain').value.toUpperCase().replace(/[^A-Z]/g, '');
+      let enc = '';
+      for (const c of txt) { enc += await typeChar(c); }
+      document.getElementById('plain').value = enc;
+    }
+
+    document.getElementById('typeBtn').onclick = typeText;
+    renderAll();
+  </script>
+</body>
+
+</html>
