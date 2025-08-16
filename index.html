@@ -1,393 +1,395 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enigma – Recorrido visual de una pulsación</title>
-  <style>
-    :root {
-      --bg: #0b1020;
-      --ink: #e9eefc;
-      --muted: #9fb0d9;
-      --accent: #71d0ff;
-      --hot: #ffd166;
-      --col-gap: 18px;
-      --row-gap: 4px;
-      --round: 14px;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Enigma – Recorrido visual de una pulsación</title>
+<style>
+  :root{
+    --bg:#0b1020; --ink:#e9eefc; --muted:#9fb0d9; --accent:#71d0ff; --hot:#ffd166;
+    --col-gap:18px; --row-gap:4px; --round:14px;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  h1{font-size:clamp(20px,3.2vw,26px);margin:10px 0 6px}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px}
+  .board{display:grid;grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr; gap:var(--col-gap); align-items:start}
+  .col{background:#121836;border:1px solid #1b2450;border-radius:var(--round);padding:10px}
+  .col h3{margin:4px 0 8px;font-size:14px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+  .letters{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--row-gap)}
+  .letters button,.letters div{
+    background:#10162e;color:var(--ink);border:1px solid #2b3b7a;border-radius:10px;padding:4px 6px;font-weight:600;
+    cursor:pointer; text-align:center; letter-spacing:.06em
+  }
+  .letters div{cursor:default}
+  .letters .hit{background:var(--hot); color:#2b2b2b; border-color:#ffb703; box-shadow:0 0 0 2px #ffb70355 inset}
+  .letters .path{background:#1a2347;color:var(--accent);border-color:#3b5bd1;box-shadow:0 0 0 2px #3b5bd177 inset}
+  .panel{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+  .panel input[type=text]{background:#0f1530;border:1px solid #334485;border-radius:10px;color:var(--ink);padding:8px 10px;min-width:240px}
+  .rotorBox{display:grid;grid-template-columns:1fr;gap:6px}
+  .badge{display:inline-block;background:#17204a;color:var(--muted);border:1px solid #2a3c8b;border-radius:10px;padding:2px 8px;font-size:12px}
+  .pos{font-weight:700;color:var(--hot)}
+  .lamp{background:#0e142f;border:1px solid #2b3b7a;border-radius:12px;padding:10px 8px;display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+  .lamp .on{background:#ffe08a;color:#1c1c1c;border-color:#ffca3a;font-weight:800}
+  .note{color:var(--muted);font-size:12px;margin-top:6px}
+  .small{font-size:12px;color:var(--muted)}
+  .footer{margin-top:10px;color:var(--muted);font-size:12px}
 
-    html,
-    body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif
-    }
+  /* === Botones panel extra === */
+  .actions button{
+    background:#0f1530;border:1px solid #334485;border-radius:10px;color:var(--ink);
+    padding:8px 10px; font-weight:600; cursor:pointer;
+  }
+  .actions button:hover{border-color:#4c67c0}
 
-    h1 {
-      font-size: clamp(20px, 3.2vw, 26px);
-      margin: 10px 0 6px
-    }
+  /* === Rotor drums (vista giratoria) === */
+  .rotorViz{display:flex;gap:8px;align-items:center}
+  .drum{
+    position:relative; width:64px; height:140px; overflow:hidden;
+    background:#0f1530; border:1px solid #334485; border-radius:10px;
+  }
+  .drumInner{position:absolute; left:0; top:0; width:100%; transition:transform .25s ease-in;}
+  .drum .cell{
+    height:24px; line-height:24px; text-align:center;
+    border-bottom:1px solid #1a2455; color:#cfe2ff; font-weight:700;
+  }
+  .drum .cell.notch{ color:var(--hot); text-shadow:0 0 6px #ffb70388; }
+  .drum .window{
+    position:absolute; left:4px; right:4px; top:calc(50% - 12px);
+    height:24px; border:1px solid #71d0ff66; border-radius:6px; pointer-events:none;
+    box-shadow:0 0 0 2px #3b5bd122 inset;
+  }
+  .drumLabel{font-size:12px;color:var(--muted)}
 
-    .wrap {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 14px
-    }
-
-    .board {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
-      gap: var(--col-gap);
-      align-items: start
-    }
-
-    .col {
-      background: #121836;
-      border: 1px solid #1b2450;
-      border-radius: var(--round);
-      padding: 10px
-    }
-
-    .col h3 {
-      margin: 4px 0 8px;
-      font-size: 14px;
-      color: var(--muted);
-      letter-spacing: .12em;
-      text-transform: uppercase
-    }
-
-    .letters {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: var(--row-gap)
-    }
-
-    .letters button,
-    .letters div {
-      background: #10162e;
-      color: var(--ink);
-      border: 1px solid #2b3b7a;
-      border-radius: 10px;
-      padding: 4px 6px;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: center;
-      letter-spacing: .06em
-    }
-
-    .letters div {
-      cursor: default
-    }
-
-    .letters .hit {
-      background: var(--hot);
-      color: #2b2b2b;
-      border-color: #ffb703;
-      box-shadow: 0 0 0 2px #ffb70355 inset
-    }
-
-    .letters .path {
-      background: #1a2347;
-      color: var(--accent);
-      border-color: #3b5bd1;
-      box-shadow: 0 0 0 2px #3b5bd177 inset
-    }
-
-    .panel {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin: 10px 0
-    }
-
-    .panel input[type=text] {
-      background: #0f1530;
-      border: 1px solid #334485;
-      border-radius: 10px;
-      color: var(--ink);
-      padding: 8px 10px;
-      min-width: 240px
-    }
-
-    .rotorBox {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 4px
-    }
-
-    .badge {
-      display: inline-block;
-      background: #17204a;
-      color: var(--muted);
-      border: 1px solid #2a3c8b;
-      border-radius: 10px;
-      padding: 2px 8px;
-      font-size: 12px
-    }
-
-    .pos {
-      font-weight: 700;
-      color: var(--hot)
-    }
-
-    .lamp {
-      background: #0e142f;
-      border: 1px solid #2b3b7a;
-      border-radius: 12px;
-      padding: 10px 8px;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 4px
-    }
-
-    .lamp .on {
-      background: #ffe08a;
-      color: #1c1c1c;
-      border-color: #ffca3a;
-      font-weight: 800
-    }
-
-    .note {
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 6px
-    }
-
-    .kbd {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 6px
-    }
-
-    .kbd button {
-      padding: 8px 0
-    }
-
-    .small {
-      font-size: 12px;
-      color: var(--muted)
-    }
-
-    .footer {
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 12px
-    }
-  </style>
+  /* === Teclado tipo keycaps QWERTY === */
+  .kbd{
+    display:flex; flex-direction:column; gap:8px;
+    padding:6px; background:#0e1533; border:1px solid #27377a; border-radius:12px;
+    box-shadow: inset 0 0 0 1px #1a2a66, 0 2px 10px #0006;
+  }
+  .kb-row{display:flex; justify-content:center; gap:8px}
+  .kb-row:nth-child(2){padding-left:18px}
+  .kb-row:nth-child(3){padding-left:34px}
+  .key{
+    min-width:38px; height:44px; padding:0 10px;
+    border-radius:10px; border:1px solid #2f418a; cursor:pointer;
+    background:
+      radial-gradient(120% 100% at 50% 0%, #2a3f96 0%, #162355 55%, #0d1638 100%),
+      linear-gradient(#1a2b66,#0f1948);
+    color:#e9eefc; font-weight:800; letter-spacing:.02em;
+    box-shadow: 0 2px 0 #0b1230, inset 0 1px 0 #506dff55, inset 0 -2px 6px #0007;
+    transition: transform .05s ease, box-shadow .05s ease, border-color .15s ease;
+    text-shadow: 0 1px 0 #000;
+  }
+  .key:hover{ border-color:#5f86ff }
+  .key:active{ transform: translateY(1px); box-shadow: 0 1px 0 #0b1230, inset 0 1px 0 #506dff55, inset 0 -1px 4px #0007 }
+  .key.glow{
+    box-shadow: 0 0 12px 3px #6cc6ff55, inset 0 1px 0 #7fd3ff88, inset 0 -2px 8px #0008;
+    border-color:#71d0ff; color:#dff2ff;
+  }
+  #typeBtn {
+  background: linear-gradient(135deg, #4c6ef5, #2b50c7);
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f0f3ff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px #0005, inset 0 1px 0 #6e8dff77;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+</style>
 </head>
-
 <body>
-  <div class="wrap">
-    <h1>Enigma – recorrido visual de una pulsación</h1>
-    <div class="panel">
-      <label>Texto: <input id="plain" type="text" value="ENIGMA" /></label>
-      <button id="typeBtn">Cifrar paso a paso</button>
-      <span class="badge">Rotores: <b id="rLeft">I</b>·<b id="rMid">II</b>·<b id="rRight">III</b></span>
-      <span class="badge">Posiciones: <span class="pos" id="pLeft">A</span> <span class="pos" id="pMid">A</span> <span
-          class="pos" id="pRight">A</span></span>
-      <span class="badge">Reflector: B</span>
+<div class="wrap">
+  <h1>Enigma – recorrido visual de una pulsación</h1>
+  <div class="panel">
+    <label>Texto: <input id="plain" type="text" value="ENIGMA"/></label>
+    <button id="typeBtn">Cifrar paso a paso</button>
+    <div class="actions">
+      <button id="btnClear" title="Borrar texto y resaltados">Limpiar</button>
+      <button id="btnReset" title="Regresar rotores a AAA">Reiniciar a AAA (actual: A A A)</button>
     </div>
-
-    <div class="board">
-      <div class="col">
-        <h3>Teclado</h3>
-        <div id="keyboard" class="kbd"></div>
-        <div class="note small">Haz clic en una letra o usa “Cifrar paso a paso”.</div>
-      </div>
-
-      <div class="col rotorBox">
-        <h3>Rotor derecho (III)</h3>
-        <div id="rotorR" class="letters"></div>
-      </div>
-
-      <div class="col rotorBox">
-        <h3>Rotor medio (II)</h3>
-        <div id="rotorM" class="letters"></div>
-      </div>
-
-      <div class="col rotorBox">
-        <h3>Rotor izquierdo (I)</h3>
-        <div id="rotorL" class="letters"></div>
-      </div>
-
-      <div class="col">
-        <h3>Reflector B</h3>
-        <div id="refl" class="letters"></div>
-      </div>
-
-      <div class="col">
-        <h3>Lámparas</h3>
-        <div id="lamp" class="lamp"></div>
-      </div>
-    </div>
-
-    <div class="footer">Simplificado pero fiel: incluye plugboard vacío, rotores I·II·III con muescas Q/E/V y reflector
-      B. Visualiza el <em>recorrido</em> resaltando cada paso (tecla → R → M → L → reflector → L → M → R → lámpara) y el
-      avance de los rotores.</div>
+    <span class="badge">Rotores: <b id="rLeft">I</b>·<b id="rMid">II</b>·<b id="rRight">III</b></span>
+    <span class="badge">Posiciones: <span class="pos" id="pLeft">A</span> <span class="pos" id="pMid">A</span> <span class="pos" id="pRight">A</span></span>
+    <span class="badge">Reflector: B</span>
   </div>
 
-  <script>
-    // === Datos de Enigma (Enigma I) ===
-    const A2Z = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]; // 0..25
-    const ROTORS = {
-      I: { map: "EKMFLGDQVZNTOWYHXUSPAIBRCJ", notch: "Q" },
-      II: { map: "AJDKSIRUXBLHWTMCQGZNPYFVOE", notch: "E" },
-      III: { map: "BDFHJLCPRTXVZNYEIWGAKMUSQO", notch: "V" }
-    };
-    const REFLECTOR_B = "YRUHQSLDPXNGOKMIEBFZCWVJAT";
-    // Plugboard sin conexiones (identidad). Puedes probar pares: {A:"B",B:"A", ...}
-    const PLUG = {};
+  <div class="board">
+    <div class="col">
+      <h3>Teclado</h3>
+      <div id="keyboard" class="kbd"></div>
+      <div class="note small">Haz clic en una tecla o usa “Cifrar paso a paso”.</div>
+    </div>
 
-    // Estado de rotores (I,II,III en izquierda,medio,derecha)
-    let left = { id: "I", pos: 0 }, mid = { id: "II", pos: 0 }, right = { id: "III", pos: 0 };
+    <div class="col rotorBox">
+      <h3>Rotor derecho (III)</h3>
+      <div class="rotorViz">
+        <div>
+          <div class="drum" id="drumR"><div class="drumInner"></div><div class="window"></div></div>
+          <div class="drumLabel">Ventana</div>
+        </div>
+      </div>
+      <div id="rotorR" class="letters"></div>
+    </div>
 
-    // === Utilidades ===
-    const idx = ch => ch.charCodeAt(0) - 65;
-    const ch = i => A2Z[(i + 26) % 26];
+    <div class="col rotorBox">
+      <h3>Rotor medio (II)</h3>
+      <div class="rotorViz">
+        <div>
+          <div class="drum" id="drumM"><div class="drumInner"></div><div class="window"></div></div>
+          <div class="drumLabel">Ventana</div>
+        </div>
+      </div>
+      <div id="rotorM" class="letters"></div>
+    </div>
 
-    function plug(i) { const c = ch(i); return PLUG[c] ? idx(PLUG[c]) : i; }
+    <div class="col rotorBox">
+      <h3>Rotor izquierdo (I)</h3>
+      <div class="rotorViz">
+        <div>
+          <div class="drum" id="drumL"><div class="drumInner"></div><div class="window"></div></div>
+          <div class="drumLabel">Ventana</div>
+        </div>
+      </div>
+      <div id="rotorL" class="letters"></div>
+    </div>
 
-    function rotorForward(i, rotor, pos) {
-      // entrada i -> salida (aplicando desplazamiento/posicion)
-      const wiring = ROTORS[rotor].map;
-      const stepped = (i + pos) % 26;
-      const outCh = wiring[stepped];
-      return (idx(outCh) - pos + 26) % 26;
+    <div class="col">
+      <h3>Reflector B</h3>
+      <div id="refl" class="letters"></div>
+    </div>
+
+    <div class="col">
+      <h3>Lámparas</h3>
+      <div id="lamp" class="lamp"></div>
+    </div>
+  </div>
+
+  <div class="footer">Simplificado pero fiel: incluye plugboard vacío, rotores I·II·III con muescas Q/E/V y reflector B. Visualiza el <em>recorrido</em> resaltando cada paso (tecla → R → M → L → reflector → L → M → R → lámpara) y el avance de los rotores con <strong>drums</strong> giratorios.</div>
+</div>
+
+<script>
+// === Datos de Enigma (Enigma I) ===
+const A2Z = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+const ROTORS = {
+  I:   {map:"EKMFLGDQVZNTOWYHXUSPAIBRCJ", notch:"Q"},
+  II:  {map:"AJDKSIRUXBLHWTMCQGZNPYFVOE", notch:"E"},
+  III: {map:"BDFHJLCPRTXVZNYEIWGAKMUSQO", notch:"V"}
+};
+const REFLECTOR_B = "YRUHQSLDPXNGOKMIEBFZCWVJAT";
+const PLUG = {};
+
+// Estado de rotores
+let left = { id:"I", pos:0 }, mid = { id:"II", pos:0 }, right = { id:"III", pos:0 };
+
+// === Utilidades ===
+const idx = ch => ch.charCodeAt(0) - 65;
+const ch  = i  => A2Z[(i+26)%26];
+
+function plug(i){ const c = ch(i); return PLUG[c] ? idx(PLUG[c]) : i; }
+function rotorForward(i, rotor, pos){ const w = ROTORS[rotor].map; const s=(i+pos)%26; return (idx(w[s]) - pos + 26)%26; }
+function rotorBackward(i, rotor, pos){ const w = ROTORS[rotor].map; const s=(i+pos)%26; const out=w.indexOf(ch(s)); return (out - pos + 26)%26; }
+const reflect = i => idx(REFLECTOR_B[i]);
+
+// === DOM ===
+const el = {
+  keyboard: document.getElementById('keyboard'),
+  rR: document.getElementById('rotorR'),
+  rM: document.getElementById('rotorM'),
+  rL: document.getElementById('rotorL'),
+  refl: document.getElementById('refl'),
+  lamp: document.getElementById('lamp'),
+  pL: document.getElementById('pLeft'),
+  pM: document.getElementById('pMid'),
+  pR: document.getElementById('pRight'),
+  plain: document.getElementById('plain'),
+  btnReset: document.getElementById('btnReset'),
+};
+
+// === Teclado ===
+const KB_ROWS = [[..."QWERTYUIOP"],[..."ASDFGHJKL"],[..."ZXCVBNM"]];
+function buildKeyboard(){
+  const kb = el.keyboard; kb.innerHTML='';
+  KB_ROWS.forEach(row=>{
+    const r=document.createElement('div'); r.className='kb-row';
+    row.forEach(L=>{
+      const k=document.createElement('button'); k.className='key'; k.dataset.letter=L; k.textContent=L;
+      k.onclick=()=>typeChar(L); r.appendChild(k);
+    });
+    kb.appendChild(r);
+  });
+}
+function glowKey(letter){
+  const btn = el.keyboard.querySelector(`.key[data-letter="${letter}"]`);
+  if(btn){ btn.classList.add('glow'); setTimeout(()=>btn.classList.remove('glow'),220); }
+}
+
+// Columnas laterales
+function fillLetters(container){
+  container.innerHTML=''; A2Z.forEach(c=>{ const n=document.createElement('div'); n.textContent=c; container.appendChild(n); });
+}
+
+// Render general
+function renderAll(){
+  fillLetters(el.rR); fillLetters(el.rM); fillLetters(el.rL); fillLetters(el.refl); fillLetters(el.lamp);
+  buildKeyboard();
+  buildDrum('R'); buildDrum('M'); buildDrum('L');
+  resetRotors(); // AAA al inicio
+}
+
+function clearClasses(){ document.querySelectorAll('.path,.hit,.on').forEach(n=> n.classList.remove('path','hit','on')); }
+function mark(container, letter, cls){
+  if (container === el.keyboard){ glowKey(letter); return; }
+  const i = idx(letter); const n = container.children[i]; if(n) n.classList.add(cls);
+}
+
+// Animación del recorrido
+async function animatePath(steps){
+  clearClasses();
+  const delay = ms => new Promise(r=> setTimeout(r, ms));
+  const {key, r1, r2, r3, ref, r3b, r2b, r1b, lamp} = steps;
+  glowKey(key); await delay(220);
+  mark(el.rR, ch(r1), 'path'); await delay(160);
+  mark(el.rM, ch(r2), 'path'); await delay(160);
+  mark(el.rL, ch(r3), 'path'); await delay(160);
+  mark(el.refl, ch(ref), 'path'); await delay(160);
+  mark(el.rL, ch(r3b), 'path'); await delay(160);
+  mark(el.rM, ch(r2b), 'path'); await delay(160);
+  mark(el.rR, ch(r1b), 'path'); await delay(160);
+  mark(el.lamp, lamp, 'on');
+}
+
+// Cálculo del recorrido
+function computePath(letter){
+  let i = plug(idx(letter));
+  const beforeR=i;
+  const o1 = rotorForward(i, right.id, right.pos); const beforeM=o1;
+  const o2 = rotorForward(o1, mid.id, mid.pos);    const beforeL=o2;
+  const o3 = rotorForward(o2, left.id, left.pos);
+  const r  = reflect(o3);
+  const b3 = rotorBackward(r, left.id, left.pos);
+  const b2 = rotorBackward(b3, mid.id, mid.pos);
+  const b1 = rotorBackward(b2, right.id, right.pos);
+  const out= plug(b1);
+  return { key:letter, r1:beforeR, r2:beforeM, r3:beforeL, ref:r, r3b:b3, r2b:b2, r1b:b1, lamp:ch(out) };
+}
+
+// Entrada
+let busy=false;
+async function typeChar(letter){
+  if(busy || !/[A-Z]/.test(letter)) return;
+  busy=true;
+  stepRotors();
+  const steps=computePath(letter);
+  await animatePath(steps);
+  busy=false;
+  return steps.lamp;
+}
+async function typeText(){
+  const txt=el.plain.value.toUpperCase().replace(/[^A-Z]/g,'');
+  let enc=''; for(const c of txt){ enc+=await typeChar(c) || ''; }
+  el.plain.value=enc;
+}
+document.getElementById('typeBtn').onclick=typeText;
+
+/* === Limpiar y reiniciar === */
+document.getElementById('btnClear').onclick=()=>{ el.plain.value=''; clearClasses(); };
+document.getElementById('btnReset').onclick=()=> resetRotors();
+
+/* === Drums === */
+const DRUM_CELL_H = 24;
+const DRUM_REPEAT = 3;
+/* Ajuste fino de ventanilla.
+ * Si la ventanilla te sigue mostrando la letra anterior, cambia a 0 o 2.
+ */
+const DRUM_WINDOW_SHIFT = 1; // <— este corrige el “Z en ventana” cuando debería ser A
+
+const drums = {
+  L: { idEl:'drumL', inner:null, notchIndex:idx(ROTORS['I'].notch) },
+  M: { idEl:'drumM', inner:null, notchIndex:idx(ROTORS['II'].notch) },
+  R: { idEl:'drumR', inner:null, notchIndex:idx(ROTORS['III'].notch) },
+};
+
+function buildDrum(which){
+  const d=drums[which];
+  const host=document.getElementById(d.idEl);
+  d.inner=host.querySelector('.drumInner');
+  d.inner.innerHTML='';
+  for(let r=0;r<DRUM_REPEAT;r++){
+    for(let k=0;k<26;k++){
+      const div=document.createElement('div');
+      div.className='cell' + ((r===1 && k===d.notchIndex)?' notch':'');
+      div.textContent=A2Z[k];
+      d.inner.appendChild(div);
     }
-    function rotorBackward(i, rotor, pos) {
-      const wiring = ROTORS[rotor].map;
-      const stepped = (i + pos) % 26;
-      const out = wiring.indexOf(ch(stepped));
-      return (out - pos + 26) % 26;
-    }
+  }
+  updateDrum(which, 0, true);
+}
 
-    function stepRotors() {
-      // Doble paso auténtico
-      const notchR = idx(ROTORS[right.id].notch);
-      const notchM = idx(ROTORS[mid.id].notch);
-      const atR = right.pos === notchR;       // si R está en su muesca, M avanzará
-      const atM = mid.pos === notchM;         // si M está en su muesca, L avanzará y M avanza por doble paso
-      // el rotor derecho siempre avanza
-      right.pos = (right.pos + 1) % 26;
-      if (atR || atM) mid.pos = (mid.pos + 1) % 26;
-      if (atM) left.pos = (left.pos + 1) % 26;
-      renderPositions();
-    }
+function setDrumTransform(d, pos, animate=true){
+  // Centrar la letra 'pos' del bloque central + ajuste fino
+  const centerRowIndex = 26 + pos + DRUM_WINDOW_SHIFT;
+  const host = document.getElementById(d.idEl);
+  const visibleH = host.clientHeight;          // ~140
+  const offsetToCenter = Math.floor(visibleH/2) - Math.floor(DRUM_CELL_H/2);
+  const translateY = -(centerRowIndex*DRUM_CELL_H - offsetToCenter);
+  d.inner.style.transition = animate ? 'transform .25s ease-in' : 'none';
+  d.inner.style.transform  = `translateY(${translateY}px)`;
+}
+function updateDrum(which, rotorPos, immediate=false){
+  setDrumTransform(drums[which], rotorPos, !immediate);
+}
 
-    function reflect(i) { return idx(REFLECTOR_B[i]); }
+// Etiqueta del botón reset
+function updateResetLabel(){
+  el.btnReset.textContent = `Reiniciar a AAA (actual: ${ch(left.pos)} ${ch(mid.pos)} ${ch(right.pos)})`;
+}
 
-    // === Visualización ===
-    const el = {
-      keyboard: document.getElementById('keyboard'),
-      rR: document.getElementById('rotorR'),
-      rM: document.getElementById('rotorM'),
-      rL: document.getElementById('rotorL'),
-      refl: document.getElementById('refl'),
-      lamp: document.getElementById('lamp'),
-      pL: document.getElementById('pLeft'),
-      pM: document.getElementById('pMid'),
-      pR: document.getElementById('pRight'),
-    };
+// Posiciones visibles
+function renderPositions(){
+  el.pL.textContent=ch(left.pos);
+  el.pM.textContent=ch(mid.pos);
+  el.pR.textContent=ch(right.pos);
+  updateDrum('L', left.pos, true);
+  updateDrum('M', mid.pos,  true);
+  updateDrum('R', right.pos,true);
+  updateResetLabel();
+}
 
-    function fillLetters(container, isButtons = false) {
-      container.innerHTML = '';
-      A2Z.forEach(c => {
-        const node = isButtons ? document.createElement('button') : document.createElement('div');
-        node.textContent = c; container.appendChild(node);
-      });
-    }
-    function renderAll() {
-      fillLetters(el.rR); fillLetters(el.rM); fillLetters(el.rL); fillLetters(el.refl); fillLetters(el.lamp);
-      fillLetters(el.keyboard, true);
-      renderPositions();
-      el.keyboard.querySelectorAll('button').forEach(b => b.onclick = () => typeChar(b.textContent));
-    }
-    function renderPositions() {
-      el.pL.textContent = ch(left.pos); el.pM.textContent = ch(mid.pos); el.pR.textContent = ch(right.pos);
-    }
+// Stepping
+function stepRotors(){
+  const notchR=idx(ROTORS[right.id].notch);
+  const notchM=idx(ROTORS[mid.id].notch);
+  const atR = right.pos===notchR;
+  const atM = mid.pos===notchM;
 
-    function clearClasses() {
-      document.querySelectorAll('.path,.hit,.on').forEach(n => n.classList.remove('path', 'hit', 'on'));
-    }
+  right.pos=(right.pos+1)%26;
+  if(atR||atM) mid.pos=(mid.pos+1)%26;
+  if(atM)      left.pos=(left.pos+1)%26;
 
-    function mark(container, letter, cls) {
-      const i = idx(letter); const n = container.children[i]; if (n) n.classList.add(cls);
-    }
+  updateDrum('R', right.pos, false);
+  if(atR||atM) updateDrum('M', mid.pos,  false);
+  if(atM)      updateDrum('L', left.pos, false);
 
-    async function animatePath(steps) {
-      clearClasses();
-      const delay = ms => new Promise(r => setTimeout(r, ms));
-      const { key, r1, r2, r3, ref, r3b, r2b, r1b, lamp } = steps;
-      mark(el.keyboard, key, 'hit'); await delay(220);
-      mark(el.rR, ch(r1), 'path'); await delay(160);
-      mark(el.rM, ch(r2), 'path'); await delay(160);
-      mark(el.rL, ch(r3), 'path'); await delay(160);
-      mark(el.refl, ch(ref), 'path'); await delay(160);
-      mark(el.rL, ch(r3b), 'path'); await delay(160);
-      mark(el.rM, ch(r2b), 'path'); await delay(160);
-      mark(el.rR, ch(r1b), 'path'); await delay(160);
-      // lámpara
-      mark(el.lamp, lamp, 'on');
-    }
+  el.pL.textContent=ch(left.pos);
+  el.pM.textContent=ch(mid.pos);
+  el.pR.textContent=ch(right.pos);
+  updateResetLabel();
+}
 
-    function computePath(letter) {
-      // 1) paso por plugboard
-      let i = idx(letter);
-      i = plug(i);
-      // para visualizar, guardamos la letra efectiva en cada entrada a columna
-      const beforeR = i;
-      // 2) R forward
-      let o1 = rotorForward(i, right.id, right.pos);
-      const beforeM = o1;
-      // 3) M forward
-      let o2 = rotorForward(o1, mid.id, mid.pos);
-      const beforeL = o2;
-      // 4) L forward
-      let o3 = rotorForward(o2, left.id, left.pos);
-      // 5) reflector
-      let r = reflect(o3);
-      // 6) regreso por L
-      let b3 = rotorBackward(r, left.id, left.pos);
-      // 7) regreso por M
-      let b2 = rotorBackward(b3, mid.id, mid.pos);
-      // 8) regreso por R
-      let b1 = rotorBackward(b2, right.id, right.pos);
-      // 9) plugboard salida
-      let out = plug(b1);
-      return {
-        key: letter,
-        r1: beforeR,
-        r2: beforeM,
-        r3: beforeL,
-        ref: r,
-        r3b: b3,
-        r2b: b2,
-        r1b: b1,
-        lamp: ch(out)
-      };
-    }
+// Reiniciar a AAA
+function resetRotors(){
+  left.pos=0; mid.pos=0; right.pos=0;
+  renderPositions();
+  clearClasses();
+}
 
-    async function typeChar(letter) {
-      if (!/[A-Z]/.test(letter)) return;
-      stepRotors();
-      const steps = computePath(letter);
-      await animatePath(steps);
-      return steps.lamp;
-    }
+// Inicializa UI
+renderAll();
 
-    async function typeText() {
-      const txt = document.getElementById('plain').value.toUpperCase().replace(/[^A-Z]/g, '');
-      let enc = '';
-      for (const c of txt) { enc += await typeChar(c); }
-      document.getElementById('plain').value = enc;
-    }
-
-    document.getElementById('typeBtn').onclick = typeText;
-    renderAll();
-  </script>
+// Enter = cifrar
+el.plain.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); typeText(); }});
+</script>
 </body>
-
 </html>
